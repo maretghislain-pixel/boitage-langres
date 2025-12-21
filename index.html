@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
  
+<!-- FIREBASE COMPAT -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
  
@@ -49,9 +50,7 @@ html, body {
   font-size: 15px;
 }
  
-.hidden {
-  display: none;
-}
+.hidden { display: none; }
  
 .legend {
   display: flex;
@@ -68,7 +67,7 @@ html, body {
 }
  
 .red { background: red; }
-.green { background: green; }
+.blue { background: blue; }
  
 .btn {
   width: 100%;
@@ -90,12 +89,10 @@ html, body {
  
 <div class="panel">
   <h3>Boitage Langres</h3>
- 
   <div class="legend">
     <div><span class="dot red"></span>À faire</div>
-    <div><span class="dot green"></span>Fait</div>
+    <div><span class="dot blue"></span>Fait</div>
   </div>
- 
   <button class="btn center-btn" onclick="centerMe()">📍 Me centrer</button>
   <button class="btn reset-btn" onclick="resetAll()">🔄 Réinitialiser</button>
 </div>
@@ -107,7 +104,7 @@ html, body {
 <div id="map"></div>
  
 <script>
-/* 🔥 FIREBASE */
+/* 🔥 FIREBASE — LANGRES */
 firebase.initializeApp({
   apiKey: "AIzaSyCfwzQCZ10qwRufMOjKaGp3_DpiXhG46pY",
   authDomain: "boitage-langres.firebaseapp.com",
@@ -122,29 +119,30 @@ const db = firebase.database();
  
 /* 📍 LANGRES */
 const LANGRES = [47.8625, 5.3333];
-const RADIUS_METERS = 6000;
+const RADIUS_METERS = 4000;
+const RESET_CODE = "2807";
  
 /* 🗺️ CARTE */
 const map = L.map('map').setView(LANGRES, 14);
- 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
  
-/* 🚀 CHARGEMENT FIABLE DES RUES */
+/* 🚀 CHARGEMENT DES RUES (FIABLE) */
 let attempts = 0;
  
 function loadStreets() {
   attempts++;
+ 
   fetch("https://overpass-api.de/api/interpreter", {
     method: "POST",
     body: `
-[out:json][timeout:25];
-(
-  way["highway"](around:${RADIUS_METERS},${LANGRES[0]},${LANGRES[1]});
-);
-out geom tags;
-`
+    [out:json][timeout:25];
+    (
+      way["highway"](around:${RADIUS_METERS},${LANGRES[0]},${LANGRES[1]});
+    );
+    out geom tags;
+    `
   })
   .then(r => r.json())
   .then(data => {
@@ -161,7 +159,7 @@ out geom tags;
       const name = el.tags && el.tags.name ? el.tags.name : "Rue sans nom";
       const coords = el.geometry.map(p => [p.lat, p.lon]);
  
-      /* 👁️ LIGNE VISIBLE (FINE + TRANSPARENTE) */
+      /* 👁️ LIGNE VISIBLE */
       const visibleLine = L.polyline(coords, {
         color: "red",
         weight: 3,
@@ -170,7 +168,7 @@ out geom tags;
  
       /* 👆 ZONE DE CLIC LARGE (INVISIBLE) */
       const clickLine = L.polyline(coords, {
-        weight: 15,
+        weight: 18,
         opacity: 0
       }).addTo(map);
  
@@ -182,7 +180,7 @@ out geom tags;
       });
  
       clickLine.on("click", () => {
-        const next = visibleLine.options.color === "red" ? "green" : "red";
+        const next = visibleLine.options.color === "red" ? "blue" : "red";
         db.ref("streets/" + id).set(next);
         visibleLine.bindPopup(`<b>${name}</b>`).openPopup();
       });
@@ -198,11 +196,17 @@ out geom tags;
   });
 }
  
-/* ⏱️ DÉMARRAGE APRÈS CARTE PRÊTE */
+/* ⏱️ DÉMARRAGE */
 map.whenReady(loadStreets);
  
-/* 🔄 RESET */
+/* 🔄 RESET SÉCURISÉ */
 function resetAll() {
+  const code = prompt("Code de réinitialisation :");
+  if (code !== RESET_CODE) {
+    alert("❌ Code incorrect");
+    return;
+  }
+ 
   if (confirm("⚠️ Réinitialiser toutes les rues pour toute l’équipe ?")) {
     db.ref("streets").set({});
   }
@@ -218,3 +222,4 @@ function centerMe() {
  
 </body>
 </html>
+ 
