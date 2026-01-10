@@ -182,7 +182,6 @@ function loadStreets() {
       clickLine.on("click", () => {
         const next = visibleLine.options.color === "red" ? "blue" : "red";
         db.ref("streets/" + id).set(next);
-        visibleLine.bindPopup(`<b>${name}</b>`).openPopup();
       });
     });
   })
